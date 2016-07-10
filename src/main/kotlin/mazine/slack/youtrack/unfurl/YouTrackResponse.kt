@@ -1,7 +1,6 @@
 package mazine.slack.youtrack.unfurl
 
 import java.time.Instant
-import java.time.LocalDateTime
 
 
 sealed class YouTrackResponse(val youtrackURL: String) {
@@ -9,7 +8,7 @@ sealed class YouTrackResponse(val youtrackURL: String) {
     val url: String
         get() = "$youtrackURL/issue/$id"
 
-    class Issue(youtrackURL: String, val json: Map<String, *>) : YouTrackResponse(youtrackURL) {
+    class Issue(youtrackURL: String, json: Map<String, *>, val isExpanded: Boolean) : YouTrackResponse(youtrackURL) {
         override val id: String by json
         val field: List<Map<String, *>> by json
         val fieldsMap = field.map {
@@ -20,7 +19,7 @@ sealed class YouTrackResponse(val youtrackURL: String) {
         val summary: String? by fieldsMap
         val description: String? by fieldsMap.withDefault { "" }
         val reporterFullName: String? by fieldsMap.withDefault { "Nobody" }
-        private val created: String by fieldsMap.withDefault { LocalDateTime.now() }
+        private val created: String by fieldsMap.withDefault { System.currentTimeMillis().toString() }
         val reportedAt: Instant
             get() = Instant.ofEpochMilli(created.toLong())
 
@@ -31,7 +30,6 @@ sealed class YouTrackResponse(val youtrackURL: String) {
         val Priority: List<String> by fieldsMap.withDefault { emptyList<String>() }
 
         val State: List<String> by fieldsMap.withDefault { emptyList<String>() }
-
 
 
         override fun toString(): String {

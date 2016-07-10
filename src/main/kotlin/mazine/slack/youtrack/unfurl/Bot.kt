@@ -14,7 +14,7 @@ fun main(args: Array<String>) {
     }
 
     val token = args[0]
-    val issueMentionFinders = listOf(
+    val issueMentionFinders = sequenceOf(
             IssueMentionFinder("https://youtrack.jetbrains.com"),
             IssueMentionFinder("https://jobs.myjetbrains.com/youtrack")
     )
@@ -29,39 +29,16 @@ fun main(args: Array<String>) {
 
         if (message.subtype == null) {
             val issues = issueMentionFinders.flatMap {
-                val url = it.youtrackURL
-                it.findMentionedIssues(message.text ?: "").map { issueID ->
-                    youtrack.requestIssue(url, issueID)
-                }
-            }
+                it.findMentionedIssues(message.text ?: "")
+            }.map {
+                youtrack.requestIssue(it.youtrackURL, it.issueID, it.isExpanded)
+            }.toList()
 
-            if (issues.isNotEmpty()) {
+            if (issues.any()) {
                 slackClient.postMessage(ChatPostMessageMethod(event.get("channel").asText(), "").apply {
                     this.mapper = mapper
                     this.isAs_user = true
-                    this.attachments = issues.map { issue ->
-                        Attachment().apply {
-                            when (issue) {
-                                is YouTrackResponse.Issue -> {
-                                    this.fallback = "${issue.id} ${issue.summary}"
-                                    this.text =
-                                            "Assignee: *${issue.assignees.map { it.fullName }.joinToString("*, *")}*, " +
-                                                    "Priority: *${issue.Priority.joinToString("*, *")}*, " +
-                                                    "State: *${issue.State.joinToString("*, *")}*\n" +
-                                                    "${issue.description}"
-                                    this.addMrkdwn_in("text")
-                                    this.footer = "Reported by *${issue.reporterFullName}*"
-                                    this.ts = issue.reportedAt.epochSecond.toInt()
-                                    this.addMrkdwn_in("footer")
-                                }
-                                is YouTrackResponse.Error -> {
-                                    this.fallback = "${issue.id} summary hidden"
-                                }
-                            }
-                            this.title = this.fallback
-                            this.title_link = issue.url
-                        }
-                    }
+                    this.attachments = issues.map(::asMessageAttachment)
                 })
             }
 
@@ -70,3 +47,29 @@ fun main(args: Array<String>) {
 
     rtmClient.connect()
 }
+
+fun asMessageAttachment(issue: YouTrackResponse): Attachment {
+    return Attachment().apply {
+        when (issue) {
+            is YouTrackResponse.Issue -> {
+                this.fallback = "${issue.id} ${issue.summary}"
+                if (issue.isExpanded) {
+                    this.text = "Assignee: *${issue.assignees.map { it.fullName }.joinToString("*, *")}*, " +
+                            "Priority: *${issue.Priority.joinToString("*, *")}*, " +
+                            "State: *${issue.State.joinToString("*, *")}*\n" +
+                            "${issue.description}"
+                    this.addMrkdwn_in("text")
+                    this.footer = "Reported by *${issue.reporterFullName}*"
+                    this.ts = issue.reportedAt.epochSecond.toInt()
+                    this.addMrkdwn_in("footer")
+                }
+            }
+            is YouTrackResponse.Error -> {
+                this.fallback = "${issue.id} summary hidden"
+            }
+        }
+        this.title = this.fallback
+        this.title_link = issue.url
+    }
+}
+

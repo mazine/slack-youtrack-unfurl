@@ -7,7 +7,7 @@ import javax.ws.rs.core.Response
 
 class YouTrack(val jerseyClient: Client = JerseyClientBuilder.createClient()) {
 
-    fun requestIssue(youtrackURL: String, id: String, accessToken: String? = null): YouTrackResponse {
+    fun requestIssue(youtrackURL: String, id: String, isExpanded: Boolean, accessToken: String? = null): YouTrackResponse {
         val response = jerseyClient.target(youtrackURL).
                 path("rest").path("issue").path(id).
                 request(MediaType.APPLICATION_JSON_TYPE).
@@ -19,7 +19,7 @@ class YouTrack(val jerseyClient: Client = JerseyClientBuilder.createClient()) {
                 get(Response::class.java)
         return if (response.status == Response.Status.OK.statusCode) {
             @Suppress("UNCHECKED_CAST")
-            YouTrackResponse.Issue(youtrackURL, response.readEntity(Map::class.java) as Map<String, *>)
+            YouTrackResponse.Issue(youtrackURL, response.readEntity(Map::class.java) as Map<String, *>, isExpanded)
         } else {
             YouTrackResponse.Error(youtrackURL, id, response.statusInfo.reasonPhrase)
         }
