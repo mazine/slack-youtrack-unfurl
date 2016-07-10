@@ -8,7 +8,12 @@ import allbegray.slack.webapi.method.chats.ChatPostMessageMethod
 import com.fasterxml.jackson.databind.ObjectMapper
 
 fun main(args: Array<String>) {
-    val token = "token"
+    if (args.size < 1) {
+        println("Usage: java mazine.slack.youtrack.unfurl.BotKt <bot token>")
+        System.exit(-1)
+    }
+
+    val token = args[0]
     val issueMentionFinders = listOf(
             IssueMentionFinder("https://youtrack.jetbrains.com"),
             IssueMentionFinder("https://jobs.myjetbrains.com/youtrack")
